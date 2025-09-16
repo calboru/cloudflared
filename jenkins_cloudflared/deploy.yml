@@ -1,0 +1,43 @@
+---
+version: '2.0'
+services:
+  jenkins-service:
+    image: okn2015/jenkins_cloudflared:latest
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: false
+    env:
+      - TUNNEL_TOKEN=enter_your_token_here
+    params:
+      storage:
+        data:
+          mount: /mnt/data
+          readOnly: false
+profiles:
+  compute:
+    jenkins-service:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 3Gi
+        storage:
+          - size: 1Gi
+          - name: data
+            size: 10Gi
+            attributes:
+              persistent: true
+              class: beta3
+  placement:
+    dcloud:
+      pricing:
+        jenkins-service:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+deployment:
+  jenkins-service:
+    dcloud:
+      profile: jenkins-service
+      count: 1
