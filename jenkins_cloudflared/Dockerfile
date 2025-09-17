@@ -9,7 +9,7 @@ RUN usermod -u 0 -o jenkins && \
     groupmod -g 0 -o jenkins
 
 # Install dependencies and cloudflared
-RUN apt-get update && apt-get install -y wget ca-certificates && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get install -y wget iputils-ping nano ca-certificates && rm -rf /var/lib/apt/lists/* \
     && ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         wget -q -O /usr/local/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64; \

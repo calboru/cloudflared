@@ -14,6 +14,8 @@ RUN apt-get clean && \
     apt-get update --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
         wget \
+        nano \
+        iputils-ping \
         curl \
         ca-certificates \
         rsync \
@@ -41,11 +43,13 @@ RUN ARCH=$(uname -m) && \
     fi && \
     chmod +x /usr/local/bin/cloudflared
 
-# Copy entrypoint script
+# Copy scripts
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY add_proxy_hosts.sh /usr/local/bin/add_proxy_hosts.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/add_proxy_hosts.sh
 
-# Use custom entrypoint that launches cloudflared and setup-sshd
+# Set custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
+EXPOSE 22
 WORKDIR /home/jenkins
