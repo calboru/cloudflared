@@ -1,5 +1,19 @@
 # Jenkins SSH Agent with Cloudflared Proxy
 
+## Run following in the container to see the limits.
+
+If it is too low, agent may fail and would cause the container restart
+
+```
+# Log current sysctl settings for debugging
+echo "Current inotify max_user_instances: $(cat /proc/sys/fs/inotify/max_user_instances)"
+echo "Current inotify max_user_watches: $(cat /proc/sys/fs/inotify/max_user_watches)"
+
+# Log ulimit for debugging
+echo "Current ulimit -n: $(ulimit -n)"
+
+```
+
 This Docker image allows you to connect Jenkins agents via SSH using Cloudflare Tunnel (`cloudflared`) without exposing ports publicly. You can define multiple proxy hosts using environment variables, which are automatically added to the `~/.ssh/config`.
 
 ---

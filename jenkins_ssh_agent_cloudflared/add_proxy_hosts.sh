@@ -4,8 +4,8 @@
 
 SSH_CONFIG="${SSH_CONFIG:-$HOME/.ssh/config}"
 CLOUDFLARED_BIN="${CLOUDFLARED_BIN:-/usr/local/bin/cloudflared/cloudflared}"
-BACKUP="${SSH_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
 TMP="$(mktemp)"
+GEN="$(mktemp)"
 
 start_marker="# BEGIN MANAGED PROXY HOSTS (cloudflared) - DO NOT EDIT"
 end_marker="# END MANAGED PROXY HOSTS (cloudflared)"
@@ -14,6 +14,7 @@ mkdir -p "$(dirname "$SSH_CONFIG")"
 touch "$SSH_CONFIG"
 chmod 600 "$SSH_CONFIG"
 
+# Generate new managed block
 {
   echo "$start_marker"
   env | awk -F= '/^PROXY_HOST_[0-9]+=/ { print $0 }' | \
@@ -39,16 +40,16 @@ EOF
 
   done
   echo "$end_marker"
-} > "$TMP"
+} > "$GEN"
 
-if ! grep -q "^$start_marker$" "$TMP"; then
+# Exit if no PROXY_HOST_* env vars
+if ! grep -q "^$start_marker$" "$GEN"; then
   echo "No PROXY_HOST_* environment variables found. Nothing to do."
-  rm -f "$TMP"
+  rm -f "$TMP" "$GEN"
   exit 0
 fi
 
-cp -p "$SSH_CONFIG" "$BACKUP" || { echo "Failed to back up $SSH_CONFIG"; rm -f "$TMP"; exit 1; }
-
+# Rebuild ssh config without old managed block
 awk -v start="$start_marker" -v end="$end_marker" '
   BEGIN { in_block=0 }
   {
@@ -56,9 +57,19 @@ awk -v start="$start_marker" -v end="$end_marker" '
     if ($0 == end) { in_block=0; next }
     if (!in_block) print
   }
-' "$SSH_CONFIG" > "${SSH_CONFIG}.tmp" && cat "$TMP" >> "${SSH_CONFIG}.tmp" && mv "${SSH_CONFIG}.tmp" "$SSH_CONFIG"
+' "$SSH_CONFIG" > "$TMP"
 
-chmod 600 "$SSH_CONFIG"
-rm -f "$TMP"
+# Append new managed block
+cat "$GEN" >> "$TMP"
 
-echo "Updated $SSH_CONFIG — backup saved as $BACKUP"
+# Only overwrite if changed
+if ! cmp -s "$TMP" "$SSH_CONFIG"; then
+  mv "$TMP" "$SSH_CONFIG"
+  chmod 600 "$SSH_CONFIG"
+  echo "Updated $SSH_CONFIG"
+else
+  rm -f "$TMP"
+  echo "$SSH_CONFIG already up to date"
+fi
+
+rm -f "$GEN"
