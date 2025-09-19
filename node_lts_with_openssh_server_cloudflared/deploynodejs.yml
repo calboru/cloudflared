@@ -1,0 +1,55 @@
+---
+version: '2.0'
+services:
+  nodejs1:
+    image: okn2015/cloudflared_node_lts_with_openssh_server:vnext
+    expose:
+      - port: 3000
+        as: 80
+        to:
+          - global: false
+          - service: cloudflared
+      - port: 22
+        as: 22
+        to:
+          - global: true
+    env:
+      - SSH_USER=8WypFtxxnLuET227
+      - >-
+        PUBLIC_KEY=ssh-ed25519
+        AAAAC3NzaC1lZDI1NTE5AAAAIJUuasXkLOvDFNS79KLg453waSHuKt364O7ZcwLTWCRR
+        node
+      - >-
+        TUNNEL_TOKEN=eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiZGVjNzI5YjQtM2NjOC00OGM3LThkOWMtYTc3NTYwZGU3YWM2IiwicyI6Ik9HRmlPVE16TVRVdE5UZGxPQzAwT0RGa0xUa3pOR0l0T1Raak5XWTJOamczT0RsaiJ9
+      - APP_PATH=/app
+    params:
+      storage:
+        app:
+          mount: /app
+          readOnly: false
+profiles:
+  compute:
+    nodejs1:
+      resources:
+        cpu:
+          units: 2
+        memory:
+          size: 2Gi
+        storage:
+          - size: 1Gi
+          - name: app
+            size: 10Gi
+            attributes:
+              persistent: true
+              class: beta3
+  placement:
+    dcloud:
+      pricing:
+        nodejs1:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+deployment:
+  nodejs1:
+    dcloud:
+      profile: nodejs1
+      count: 1
