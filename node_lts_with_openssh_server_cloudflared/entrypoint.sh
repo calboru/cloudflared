@@ -11,14 +11,11 @@ if [ -z "${PUBLIC_KEY:-}" ]; then
     exit 1
 fi
 
- 
 # Create user if not exists
 if ! id "$SSH_USER" &>/dev/null; then
     adduser -D -s /bin/bash "$SSH_USER"
-    # Unlock user so SSH key login works
     passwd -u "$SSH_USER" >/dev/null 2>&1 || true
 fi
-
 
 # Ensure APP_PATH exists and belongs to user
 mkdir -p "$APP_PATH"
@@ -36,5 +33,26 @@ echo "✅ User: $SSH_USER"
 echo "✅ App path: $APP_PATH"
 echo "✅ Public key installed"
 
-# Start supervisord (which runs sshd)
-exec /usr/bin/supervisord -c /etc/supervisord.conf
+# Generate Cloudflared proxy configs
+if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
+    echo "🚀 Generating Cloudflared proxies..."
+    /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
+else
+    echo "⚠️ start_cloudflared_proxies.sh not found"
+fi
+
+echo "🔄 Starting supervisord..."
+# Run supervisord in foreground
+/usr/bin/supervisord -n -c /etc/supervisord.conf &
+
+# Wait for supervisord to start, then signal reload
+sleep 2
+if [ -f /tmp/supervisord.pid ]; then
+    kill -HUP $(cat /tmp/supervisord.pid)
+    echo "✅ Sent SIGHUP to supervisord to reload configurations"
+else
+    echo "⚠️ supervisord.pid not found, configs may not be reloaded"
+fi
+
+# Keep container running
+wait

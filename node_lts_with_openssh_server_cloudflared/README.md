@@ -1,55 +1,58 @@
-```
-docker run -d \
- -e CF_TUNNEL_1_HOST=elastic1.example.com \
- -e CF_TUNNEL_1_URL=localhost:9200 \
- -e CF_TUNNEL_1_LISTENER=127.0.0.1:9200 \
- -e CF_TUNNEL_1_TOKEN_ID=abc123 \
- -e CF_TUNNEL_1_TOKEN_SECRET=def456 \
- -e CF_TUNNEL_2_HOST=elastic2.example.com \
- -e CF_TUNNEL_2_URL=localhost:9201 \
- -e CF_TUNNEL_2_LISTENER=127.0.0.1:9201 \
- -e CF_TUNNEL_2_TOKEN_ID=ghi789 \
- -e CF_TUNNEL_2_TOKEN_SECRET=jkl012 \
- -e PUBLIC_KEY="public key here" \
- -e TUNNEL_TOKEN="tunnel token here" \
- -e APP_PATH=/app \
- -e SSH_USER=sshuser \
- -p 22:22 \
- -p 3000:3000 \
-image-name
-```
+# node_lts_with_openssh_server_cloudflared
 
-# Example: start a local listener that Cloudflare will use to forward traffic from local to remote
+This Docker image provides a lightweight Alpine-based container running an OpenSSH server, a Cloudflared Access proxy, and a Cloudflared tunnel, managed by Supervisor. It includes Node.js, npm, pnpm, and pm2 for Node.js application support, and log rotation for production reliability. The container is designed for secure SSH access and secure proxying/tunneling to services via Cloudflare Zero Trust.
 
-```
-cloudflared access tcp \
- --hostname elastic.example.com \
- --url localhost:9200 \
- --listener 127.0.0.1:9200 \
- --service-token-id "$CF_ACCESS_TOKEN_ID" \
-  --service-token-secret "$CF_ACCESS_TOKEN_SECRET"
-```
+## Features
 
-```
+- **OpenSSH Server**: Runs on port 22 (mapped to host port 2222) with key-based authentication, ensuring secure remote access.
+- **Cloudflared Proxy**: Configurable via `PROXY_*` environment variables to proxy traffic through Cloudflare Access (e.g., `es.example.com` to `tcp://localhost:9200`).
+- **Cloudflared Tunnel**: Establishes a secure tunnel using a `TUNNEL_TOKEN` for Cloudflare Zero Trust connectivity.
+- **Supervisor**: Manages `sshd`, `cloudflared` (tunnel), `PROXY_*` (proxies), and `logrotate` processes with automatic restarts for reliability.
+- **Log Rotation**: Uses `logrotate` to manage `/var/log/*.log` files, preventing disk exhaustion in long-running deployments.
+- **Multi-Architecture**: Supports `linux/amd64` and `linux/arm64` platforms for broad compatibility.
 
+## Prerequisites
 
+- **Docker**: Ensure Docker is installed and running.
+- **Cloudflare Zero Trust**:
+  - A valid `TUNNEL_TOKEN` for the Cloudflared tunnel, obtained from the Cloudflare Zero Trust dashboard.
+  - Valid `service-token-id` and `service-token-secret` for Cloudflare Access, used in `PROXY_1`.
+- **SSH Key Pair**: A public/private key pair (e.g., `web1.pub`/`web1.key`) for SSH authentication.
 
+## Build Instructions
+
+Build and push the multi-architecture image to a Docker registry:
+
+```bash
 docker buildx build \
- --no-cache \
- --platform linux/amd64,linux/arm64 \
- -t okn2015/node_lts_with_openssh_server_cloudflared:v1 \
- . \
- --push
+  --no-cache \
+  --platform linux/amd64,linux/arm64 \
+  -t okn2015/node_lts_with_openssh_server_cloudflared:vxxx \
+  . \
+  --push
+```
 
+```
+docker run -d \
+  -p 2222:22 \
+  -p 9201:9201 \
+  -e PUBLIC_KEY="$(cat ./web1.pub)" \
+  -e SSH_USER=myuser \
+  -e APP_PATH=/app \
+  -e PROXY_1="hostname=es.example.com&listener=localhost:9201&destination=tcp://localhost:9200&service-token-id=628bb2cbfce8f71bd5fc29e860c98872.access&service-token-secret=6414503014075ecd08007e90230d8016fb557edf3e42d99
 
 ```
 
-cloudflared tunnel run --token eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiYmFiYWZmODItNmFhNC00ZTk5LTk1MTUtMTIxNTJiZmY4NzU3IiwicyI6Ik16UmpaRFEzTXpjdE1HVXdOUzAwWTJZd0xXSTNaR0V0TlRnMlpqY3pNbVUyTURkaCJ9
+# Environment Variables
 
-docker run -d \
- -p 2222:22 \
- -e PUBLIC_KEY="$(cat ./web1.pub)" \
- -e TUNNEL_TOKEN="eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiYmFiYWZmODItNmFhNC00ZTk5LTk1MTUtMTIxNTJiZmY4NzU3IiwicyI6Ik16UmpaRFEzTXpjdE1HVXdOUzAwWTJZd0xXSTNaR0V0TlRnMlpqY3pNbVUyTURkaCJ9" \
- -e SSH_USER=myuser \
- -e APP_PATH=/app \
- node-ssh
+- **PUBLIC_KEY**: The SSH public key for authentication (e.g., contents of `web1.pub`). **Required**.
+- **SSH_USER**: The SSH user name (default: `sshuser`). **Required**.
+- **APP_PATH**: Directory for application files (default: `/app`). **Required**.
+- **PROXY_1**: Configures a Cloudflared Access proxy.  
+  **Format**:
+
+#Example:
+
+```
+hostname=es.example.com&listener=localhost:9201&destination=tcp://localhost:9200&service-token-id=628bb2cbfce8f71bd5fc29e860c98872.access&service-token-secret=6414503014075ecd08007e90230d8016fb557edf3e42d99a35fde026aa0dc429
+```
