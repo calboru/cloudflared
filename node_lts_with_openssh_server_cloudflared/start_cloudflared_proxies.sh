@@ -1,18 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-echo "✅ User: ${SSH_USER:-root}"
-echo "✅ App path: ${APP_PATH:-/app}"
-
-# Install public key (redundant with entrypoint but harmless)
-if [ -n "${PUBLIC_KEY:-}" ]; then
-    mkdir -p /home/${SSH_USER}/.ssh
-    echo "$PUBLIC_KEY" >> /home/${SSH_USER}/.ssh/authorized_keys
-    chmod 600 /home/${SSH_USER}/.ssh/authorized_keys
-    chown -R ${SSH_USER}:${SSH_USER} /home/${SSH_USER}/.ssh
-    echo "✅ Public key installed"
-fi
-
+ 
 echo "🚀 Generating Cloudflared proxies..."
 
 PROXY_FOUND=0

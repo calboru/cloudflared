@@ -35,7 +35,6 @@ echo "✅ Public key installed"
 
 # Generate Cloudflared proxy configs
 if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
-    echo "🚀 Generating Cloudflared proxies..."
     /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
 else
     echo "⚠️ start_cloudflared_proxies.sh not found"
@@ -44,15 +43,6 @@ fi
 echo "🔄 Starting supervisord..."
 # Run supervisord in foreground
 /usr/bin/supervisord -n -c /etc/supervisord.conf &
-
-# Wait for supervisord to start, then signal reload
-sleep 2
-if [ -f /tmp/supervisord.pid ]; then
-    kill -HUP $(cat /tmp/supervisord.pid)
-    echo "✅ Sent SIGHUP to supervisord to reload configurations"
-else
-    echo "⚠️ supervisord.pid not found, configs may not be reloaded"
-fi
 
 # Keep container running
 wait
