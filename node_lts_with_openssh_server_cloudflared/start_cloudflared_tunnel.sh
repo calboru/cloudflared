@@ -1,10 +1,19 @@
-#!/bin/sh
-set -eu
+#!/usr/bin/env bash
+set -e
 
-# If TUNNEL_TOKEN is set, start the tunnel
-if [ -n "${TUNNEL_TOKEN:-}" ]; then
-    exec /usr/local/bin/cloudflared tunnel run --no-autoupdate --token "$TUNNEL_TOKEN" --output default
-else
-    # Keep the script alive so supervisord doesn't restart it unnecessarily
-    tail -f /dev/null
+# Ensure TUNNEL_TOKEN is set
+if [ -z "${TUNNEL_TOKEN:-}" ]; then
+    echo "❌ ERROR: TUNNEL_TOKEN environment variable is required" >&2
+    exit 1
 fi
+
+echo "🚀 Starting Cloudflared tunnel..." >&2
+
+# Loop to handle immediate crash retries (optional)
+while true; do
+    /usr/local/bin/cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN" \
+        >> /proc/1/fd/1 2>> /proc/1/fd/2
+    EXIT_CODE=$?
+    echo "⚠️ Cloudflared exited with code $EXIT_CODE. Restarting in 2s..." >&2
+    sleep 2
+done

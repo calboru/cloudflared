@@ -45,3 +45,11 @@ docker buildx build \
 ```
 
 cloudflared tunnel run --token eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiYmFiYWZmODItNmFhNC00ZTk5LTk1MTUtMTIxNTJiZmY4NzU3IiwicyI6Ik16UmpaRFEzTXpjdE1HVXdOUzAwWTJZd0xXSTNaR0V0TlRnMlpqY3pNbVUyTURkaCJ9
+
+docker run -d \
+ -p 2222:22 \
+ -e PUBLIC_KEY="$(cat ./web1.pub)" \
+ -e TUNNEL_TOKEN="eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiYmFiYWZmODItNmFhNC00ZTk5LTk1MTUtMTIxNTJiZmY4NzU3IiwicyI6Ik16UmpaRFEzTXpjdE1HVXdOUzAwWTJZd0xXSTNaR0V0TlRnMlpqY3pNbVUyTURkaCJ9" \
+ -e SSH_USER=myuser \
+ -e APP_PATH=/app \
+ node-ssh

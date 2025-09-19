@@ -42,6 +42,10 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 # Make entrypoint executable
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Copy Cloudflared start script
+COPY start_cloudflared_tunnel.sh /usr/local/bin/start_cloudflared_tunnel.sh
+RUN chmod +x /usr/local/bin/start_cloudflared_tunnel.sh
+
 # Expose SSH and app port
 EXPOSE 22 3000
 
