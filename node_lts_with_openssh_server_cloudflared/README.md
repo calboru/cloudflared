@@ -34,12 +34,19 @@ docker buildx build \
 
 ```
 docker run -d \
+  --name nodessh \
+  --restart unless-stopped \
   -p 2222:22 \
+  -p 3000:3000 \
+  -p 9200:9200 \
   -p 9201:9201 \
+  -v log_volume:/var/log \
   -e PUBLIC_KEY="$(cat ./web1.pub)" \
   -e SSH_USER=myuser \
   -e APP_PATH=/app \
-  -e PROXY_1="hostname=es.example.com&listener=localhost:9201&destination=tcp://localhost:9200&service-token-id=628bb2cbfce8f71bd5fc29e860c98872.access&service-token-secret=6414503014075ecd08007e90230d8016fb557edf3e42d99
+  -e PROXY_1="hostname=es.example.com&listener=localhost:9201&destination=tcp://localhost:9200&service-token-id=628bb2cbfce8f71bd5fc29e860c98872.access&service-token-secret=6414503014075ecd08007e90230d8016fb557edf3e42d99e1234567890abcdef" \
+  -e TUNNEL_TOKEN="tunnel token here..." \
+  node-ssh
 
 ```
 

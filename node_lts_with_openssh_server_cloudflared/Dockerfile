@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     py3-pip \
     supervisor \
     logrotate \
+    openrc \
     && rm -rf /var/cache/apk/*
 
 # Install cloudflared
@@ -38,6 +39,11 @@ RUN ssh-keygen -A
 # Create log directory
 RUN mkdir -p /var/log && chmod -R 755 /var/log
 
+# Ensure cron directory and logrotate script exist
+RUN mkdir -p /etc/cron.daily && \
+    echo '#!/bin/sh\n/usr/sbin/logrotate /etc/logrotate.conf' > /etc/cron.daily/logrotate && \
+    chmod +x /etc/cron.daily/logrotate
+
 # Copy configs and entrypoint
 COPY sshd_config /etc/ssh/sshd_config
 COPY supervisord.conf /etc/supervisord.conf
@@ -52,6 +58,7 @@ COPY start_cloudflared_tunnel.sh /usr/local/bin/start_cloudflared_tunnel.sh
 RUN chmod +x /usr/local/bin/start_cloudflared_proxies.sh
 RUN chmod +x /usr/local/bin/start_cloudflared_tunnel.sh
 
+# Copy updated logrotate configuration
 COPY logrotate.conf /etc/logrotate.conf
 
 # Expose SSH, app, and proxy ports
