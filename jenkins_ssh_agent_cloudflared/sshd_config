@@ -1,0 +1,24 @@
+Port 22
+Protocol 2
+
+# Disable password/root login
+
+PasswordAuthentication no
+PermitRootLogin no
+ChallengeResponseAuthentication no
+
+# Keys only
+
+PubkeyAuthentication yes
+AuthorizedKeysFile /home/%u/.ssh/authorized_keys
+
+# Logging
+
+LogLevel VERBOSE
+SyslogFacility AUTH
+
+# SFTP
+
+Subsystem sftp /usr/lib/ssh/sftp-server
+
+UsePAM no

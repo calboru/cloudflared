@@ -20,8 +20,15 @@ RUN apt-get clean && \
         ca-certificates \
         rsync \
         nodejs \
+        supervisor \
+        logrotate \
+        python3-pip \
         npm && \
     rm -rf /var/lib/apt/lists/*
+
+# Configure daily logrotate cron job
+RUN echo '#!/bin/sh\nlogrotate /etc/logrotate.conf' > /etc/cron.daily/logrotate && \
+    chmod +x /etc/cron.daily/logrotate
 
 # Install Node.js LTS and npm explicitly
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
@@ -43,10 +50,21 @@ RUN ARCH=$(uname -m) && \
     fi && \
     chmod +x /usr/local/bin/cloudflared
 
+# Generate SSH host keys
+RUN ssh-keygen -A
+
 # Copy scripts
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY add_proxy_hosts.sh /usr/local/bin/add_proxy_hosts.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/add_proxy_hosts.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Copy custom scripts
+COPY start_cloudflared_proxies.sh /usr/local/bin/start_cloudflared_proxies.sh
+RUN chmod +x /usr/local/bin/start_cloudflared_proxies.sh
+ 
+
+COPY logrotate.conf /etc/logrotate.conf
+COPY sshd_config /etc/ssh/sshd_config
+COPY supervisord.conf /etc/supervisord.conf
 
 # Set custom entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
