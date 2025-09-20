@@ -63,7 +63,7 @@ RUN chmod +x /usr/local/bin/start_cloudflared_proxies.sh
  
 
 COPY logrotate.conf /etc/logrotate.conf
-COPY sshd_config /etc/ssh/sshd_config
+
 COPY supervisord.conf /etc/supervisord.conf
 
 # Set custom entrypoint
