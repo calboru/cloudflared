@@ -2,26 +2,22 @@
 version: '2.0'
 services:
   nodejs1:
-    image: okn2015/cloudflared_node_lts_with_openssh_server:vnext
+    image: okn2015/cloudflared_node_lts_with_openssh_server:vnext3
     expose:
       - port: 3000
         as: 80
         to:
           - global: false
-          - service: cloudflared
       - port: 22
         as: 22
         to:
-          - global: true
+          - global: false
     env:
       - SSH_USER=8WypFtxxnLuET227
       - >-
-        PUBLIC_KEY=ssh-ed25519
-        AAAAC3NzaC1lZDI1NTE5AAAAIJUuasXkLOvDFNS79KLg453waSHuKt364O7ZcwLTWCRR
-        node
+        PUBLIC_KEY=
       - >-
-        TUNNEL_TOKEN=eyJhIjoiODRiMGQzZGQxZTJjZGE2ZTM5ZjU5ZjQ3YTZhODNhZjMiLCJ0IjoiZGVjNzI5YjQtM2NjOC00OGM3LThkOWMtYTc3NTYwZGU3YWM2IiwicyI6Ik9HRmlPVE16TVRVdE5UZGxPQzAwT0RGa0xUa3pOR0l0T1Raak5XWTJOamczT0RsaiJ9
-      - APP_PATH=/app
+        TUNNEL_TOKEN=
     params:
       storage:
         app:

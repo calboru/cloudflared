@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     py3-pip \
     supervisor \
     logrotate \
+    rsync \
     openrc \
     && rm -rf /var/cache/apk/*
 
