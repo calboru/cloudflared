@@ -40,6 +40,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/add_tunnel.sh
 # Copy logrotate configuration
 COPY logrotate.conf /etc/logrotate.conf
 
+COPY start_cloudflared_proxies.sh /usr/local/bin/start_cloudflared_proxies.sh
+RUN chmod +x /usr/local/bin/start_cloudflared_proxies.sh
+
 # Set bash as the default shell
 SHELL ["/bin/bash", "-c"]
 

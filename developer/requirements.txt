@@ -1,0 +1,31 @@
+# API
+fastapi
+uvicorn[standard]
+gunicorn
+python-multipart
+orjson
+httpx
+
+# Databases
+redis
+elasticsearch
+sqlalchemy
+alembic
+
+# Utils
+loguru
+python-dotenv
+tenacity
+pendulum
+
+# Security
+pyjwt
+passlib[bcrypt]
+
+# Monitoring
+prometheus-client
+sentry-sdk
+
+# Testing
+pytest
+pytest-asyncio

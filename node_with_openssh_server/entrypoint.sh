@@ -11,6 +11,14 @@ if [ -z "${PUBLIC_KEY:-}" ]; then
     exit 1
 fi
 
+# Start Glances Web UI
+echo "[Entrypoint] Starting Glances Web UI on internal port 61209..."
+glances -w -p 61209 &
+
+# Start Nginx
+echo "[Entrypoint] Starting Nginx..."
+nginx -g "daemon off;" &
+
 # Create user if not exists
 if ! id "$SSH_USER" &>/dev/null; then
     adduser -D -s /bin/bash "$SSH_USER"
@@ -33,16 +41,5 @@ echo "✅ User: $SSH_USER"
 echo "✅ App path: $APP_PATH"
 echo "✅ Public key installed"
 
-# Generate Cloudflared proxy configs
-if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
-    /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
-else
-    echo "⚠️ start_cloudflared_proxies.sh not found"
-fi
-
-echo "🔄 Starting supervisord..."
-# Run supervisord in foreground
-/usr/bin/supervisord -n -c /etc/supervisord.conf &
-
-# Keep container running
-wait
+echo "🔄 Starting SSH daemon..."
+exec /usr/sbin/sshd -D -e

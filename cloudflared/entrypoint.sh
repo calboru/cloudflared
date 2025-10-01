@@ -30,6 +30,13 @@ else
     echo "✅ Generated supervisord configs for cloudflared tunnels"
 fi
 
+# Generate Cloudflared proxy configs
+if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
+    /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
+else
+    echo "⚠️ start_cloudflared_proxies.sh not found"
+fi
+
 echo "🔄 Starting supervisord..."
 # Run supervisord in foreground
 exec /usr/bin/supervisord -n -c /etc/supervisord.conf
