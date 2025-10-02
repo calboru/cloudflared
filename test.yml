@@ -1,0 +1,215 @@
+---
+version: '2.0'
+services:
+  n8n:
+    image: okn2015/n8n:v100
+    expose:
+      - port: 5678
+        as: 80
+        to:
+          - global: true
+          - service: postgres
+          - service: redis
+          - service: worker
+          - service: webhook
+    env:
+      - N8N_PORT=5678
+      - N8N_SECURE_COOKIE=false
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=MNhASbKtgfJI1qsV
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PASSWORD=v0VL2uQexmPz7f99
+      - N8N_ENCRYPTION_KEY=abcdefg
+  postgres:
+    image: okn2015/postgres:v100
+    expose:
+      - port: 5432
+        as: 5432
+        proto: tcp
+        to:
+          - global: false
+          - service: n8n
+          - service: redis
+          - service: worker
+          - service: webhook
+    env:
+      - POSTGRES_PASSWORD=MNhASbKtgfJI1qsV
+    params:
+      storage:
+        data:
+          mount: /mnt/data
+          readOnly: false
+  redis:
+    image: redis/redis-stack:latest
+    expose:
+      - port: 6379
+        as: 6379
+        proto: tcp
+        to:
+          - global: false
+          - service: n8n
+          - service: postgres
+          - service: worker
+          - service: webhook
+      - port: 8001
+        as: 8001
+        proto: tcp
+        to:
+          - global: false
+    env:
+      - REDIS_ARGS="--requirepass v0VL2uQexmPz7f99"
+    params:
+      storage:
+        data:
+          mount: /data
+          readOnly: false
+  worker:
+    image: okn2015/n8n-worker-webhook:v100
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: true
+          - service: n8n
+          - service: postgres
+          - service: redis
+          - service: webhook
+    env:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=MNhASbKtgfJI1qsV
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PASSWORD=v0VL2uQexmPz7f99
+      - MODE=worker
+      - N8N_ENCRYPTION_KEY=abcdefg
+      - N8N_DISABLE_UI=true
+  webhook:
+    image: okn2015/n8n-worker-webhook:v100
+    expose:
+      - port: 80
+        as: 80
+        to:
+          - global: true
+          - service: n8n
+          - service: postgres
+          - service: redis
+          - service: worker
+    env:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=MNhASbKtgfJI1qsV
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PASSWORD=v0VL2uQexmPz7f99
+      - MODE=webhook
+      - N8N_ENCRYPTION_KEY=abcdefg
+      - N8N_DISABLE_UI=true
+profiles:
+  compute:
+    n8n:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 1Gi
+        storage:
+          - size: 1Gi
+    postgres:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 2Gi
+        storage:
+          - size: 2Gi
+          - name: data
+            size: 5Gi
+            attributes:
+              persistent: true
+              class: beta3
+    redis:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 1Gi
+        storage:
+          - size: 1Gi
+          - name: data
+            size: 1Gi
+            attributes:
+              persistent: true
+              class: beta3
+    worker:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 1Gi
+        storage:
+          - size: 1Gi
+    webhook:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 1Gi
+        storage:
+          - size: 1Gi
+  placement:
+    dcloud:
+      pricing:
+        n8n:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+        postgres:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+        redis:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+        worker:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+        webhook:
+          denom: ibc/170C677610AC31DF0904FFE09CD3B5C657492170E7E52372E48756B71E56F2F1
+          amount: 100000
+deployment:
+  n8n:
+    dcloud:
+      profile: n8n
+      count: 1
+  postgres:
+    dcloud:
+      profile: postgres
+      count: 1
+  redis:
+    dcloud:
+      profile: redis
+      count: 1
+  worker:
+    dcloud:
+      profile: worker
+      count: 1
+  webhook:
+    dcloud:
+      profile: webhook
+      count: 1
