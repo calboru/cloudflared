@@ -1,50 +1,81 @@
 FROM alpine:latest
 
-# Install bash and other required packages
+# Install required packages
 RUN apk add --no-cache \
     bash \
     curl \
     wget \
     nano \
+    coreutils \
     iputils \
-    supervisor \
-    logrotate \
     openrc \
+    openssh \
+    sudo \
+    py3-pip \
+    rsync \
+    nginx \
+    apache2-utils \
+    python3 \
+    python3-dev \
+    gcc \
+    musl-dev \
+    linux-headers \
     && rm -rf /var/cache/apk/*
 
-# Detect architecture and download appropriate cloudflared binary
+# Persistent directories
+RUN mkdir -p /mnt/data/supervisord /var/run/sshd 
+
+# Add SSH user and allow sudo for supervisorctl
+ENV SSH_USER=sshuser
+
+RUN adduser -D -s /bin/bash "$SSH_USER" && \
+    passwd -u "$SSH_USER" && \
+    echo "$SSH_USER ALL=(ALL) NOPASSWD: /opt/venv/bin/supervisorctl -c /mnt/data/supervisord/supervisord.conf restart cloudflared, \
+    /opt/venv/bin/supervisorctl -c /mnt/data/supervisord/supervisord.conf status cloudflared" > /etc/sudoers.d/sshuser_supervisor && \
+    chmod 440 /etc/sudoers.d/sshuser_supervisor
+
+# Download cloudflared to /mnt/data
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
-        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared; \
+        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /mnt/data/cloudflared; \
     elif [ "$ARCH" = "aarch64" ]; then \
-        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o /usr/local/bin/cloudflared; \
+        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o /mnt/data/cloudflared; \
     else \
         echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
-    chmod +x /usr/local/bin/cloudflared
+    fi && chmod +x /mnt/data/cloudflared
 
-# Create log directory
-RUN mkdir -p /var/log && chmod -R 755 /var/log
 
-# Ensure cron directory and logrotate script exist
-RUN mkdir -p /etc/cron.daily && \
-    echo '#!/bin/sh\n/usr/sbin/logrotate /etc/logrotate.conf' > /etc/cron.daily/logrotate && \
-    chmod +x /etc/cron.daily/logrotate
+    
+# Copy supervisord config
+COPY supervisord.conf /etc/supervisor/supervisord.conf
 
-# Copy configs and scripts
-COPY supervisord.conf /etc/supervisord.conf
+# Copy SSH config and run scripts
+COPY sshd_config /etc/ssh/sshd_config
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY add_tunnel.sh /usr/local/bin/add_tunnel.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/add_tunnel.sh
+COPY setup_cloudflared.sh /usr/local/bin/setup_cloudflared.sh
 
-# Copy logrotate configuration
-COPY logrotate.conf /etc/logrotate.conf
+# Make scripts executable
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/setup_cloudflared.sh
 
-COPY start_cloudflared_proxies.sh /usr/local/bin/start_cloudflared_proxies.sh
-RUN chmod +x /usr/local/bin/start_cloudflared_proxies.sh
+# Glances config
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY .htpasswd /etc/nginx/.htpasswd
+RUN chmod 644 /etc/nginx/.htpasswd
 
-# Set bash as the default shell
-SHELL ["/bin/bash", "-c"]
 
-# Set entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Runtime injection of PUBLIC_KEY
+ENV PUBLIC_KEY=""
+
+# Python venv + Glances + Supervisor
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && /opt/venv/bin/pip install --no-cache-dir glances[web] supervisor
+
+# Generate SSH host keys
+RUN ssh-keygen -A
+
+# Expose ports
+EXPOSE 22 61208
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
+

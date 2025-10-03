@@ -1,0 +1,26 @@
+Port 22
+Protocol 2
+
+# Authentication
+
+PasswordAuthentication no
+PermitRootLogin no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Logging
+
+LogLevel VERBOSE
+SyslogFacility AUTH
+
+# Port Forwarding
+
+AllowTcpForwarding yes
+X11Forwarding yes
+PermitTunnel yes
+GatewayPorts yes
+
+# SFTP
+
+Subsystem sftp /usr/lib/ssh/sftp-server

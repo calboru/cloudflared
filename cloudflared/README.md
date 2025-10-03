@@ -1,26 +1,88 @@
-# Cloudflared Multi-Tunnel Docker Image
+# Cloudflared Alpine Docker
 
-This repository provides a Docker image for running [Cloudflared](https://github.com/cloudflare/cloudflared) with support for multiple tunnels, managed by [Supervisor](http://supervisord.org/).
+A lightweight Alpine-based Docker image to run **Cloudflared tunnels**, **SSH access**, and **Glances web monitoring** under **Supervisor**. Supports dynamic `PROXY_*` tunnels and runtime injection of SSH keys and Cloudflared certificates.
+
+---
 
 ## Features
 
-- **Multi-tunnel support:** Easily run multiple Cloudflared tunnels in a single container.
-- **Dynamic tunnel management:** Add or remove tunnels at runtime using a provided shell script.
-- **Supervisor integration:** Each tunnel is managed as a separate Supervisor process for reliability and easy monitoring.
+- Runs **Cloudflared tunnels** and **PROXY commands** with dynamic Supervisor configs.
+- SSH access with **public key authentication**.
+- Includes **Glances web monitoring**.
+- Lightweight **Alpine Linux** base.
+- Multi-architecture support: `amd64` and `arm64`.
+- Automatic handling of `TUNNEL_TOKEN` and `CLOUDFLARED_CERT`.
 
-## Usage
+---
 
-### Environment Variables
+## Environment Variables
 
-To configure tunnels at startup, set environment variables in the format:
+| Variable                | Description                                                 | Required |
+| ----------------------- | ----------------------------------------------------------- | -------- |
+| `PUBLIC_KEY`            | SSH public key for user access                              | ✅       |
+| `SSH_USER`              | Username for SSH access (default: `sshuser`)                | ⚪       |
+| `CLOUDFLARED_CERT`      | Contents of Cloudflared certificate (`cert.pem`)            | ✅       |
+| `TUNNEL_TOKEN`          | Cloudflared tunnel token                                    | ✅       |
+| `PROXY_1, PROXY_2, ...` | Optional Cloudflared proxy commands to run under Supervisor | ⚪       |
 
-This is a Cloudflared image with multi tunnel implementation with supervisor. Add TUNNEL\_(descriptive key) in the environment values it will run the tunnels at startup. You can add tunnel by using the container terminal with command add_tunnel.sh shell script parameters are TUNNEL_NAME and TUNNEL_TOKEN it will create relevant supervisor configuration.
+**Notes:**
 
-## To build and push to Docker Hub
+- `PROXY_*` commands are expected as **full command strings**, for example:
+  ```bash
+  PROXY_1="/mnt/data/cloudflared access tcp --hostname example.com --destination tcp://web:22 --listener localhost:2222"
+  ```
 
+| Port  | Service        |
+| ----- | -------------- |
+| 22    | SSH            |
+| 61208 | Glances web UI |
+
+## How to build and push to Docker Hub?
+
+```
 docker buildx build \
- --no-cache \
- --platform linux/amd64,linux/arm64 \
- -t okn2015/cloudflared:lts \
- . \
- --push
+  --no-cache \
+  --platform linux/amd64,linux/arm64 \
+  -t yourusername/cloudflared:v1.0 \
+  . \
+  --push
+```
+
+## How to run the container locally?
+
+```
+docker run -d \
+  -e PUBLIC_KEY="$(cat ~/.ssh/id_rsa.pub)" \
+  -e CLOUDFLARED_CERT="$(cat cert.pem)" \
+  -e TUNNEL_TOKEN="your_tunnel_token" \
+  -e PROXY_1="your_proxy_command" \
+  -p 22:22 \
+  -p 61208:61208 \
+  yourusername/cloudflared:v1.0
+
+```
+
+## Check the status of the services
+
+### Run inside the container shell or ssh into it first
+
+```
+/opt/venv/bin/supervisorctl -s http://127.0.0.1:9001 -u admin -p admin status
+
+```
+
+## Reload services
+
+### Run inside the container shell or ssh into it first
+
+```
+/opt/venv/bin/supervisorctl -s http://127.0.0.1:9001 -u admin -p admin update
+
+```
+
+# How to create .htaccess password to reset Glancer access password ?
+
+```
+htpasswd -c /etc/nginx/.htpasswd admin
+
+```

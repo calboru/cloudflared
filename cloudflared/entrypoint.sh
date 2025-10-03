@@ -1,42 +1,62 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
-# Create directory for supervisord program configs
-mkdir -p /etc/supervisor/conf.d
+SSHD_CONFIG="/etc/ssh/sshd_config"
+SSH_USER=${SSH_USER:-sshuser}
+CLOUDFLARED_CERT_DIR="/usr/local/etc/cloudflared"
+CLOUDFLARED_CERT_PATH="$CLOUDFLARED_CERT_DIR/cert.pem"
 
-# Iterate through TUNNEL_ environment variables
-for tunnel_var in $(env | grep '^TUNNEL_' | cut -d= -f1); do
-    tunnel_token=${!tunnel_var}
-    tunnel_name=${tunnel_var#TUNNEL_}  # Extract name after TUNNEL_
-
-    # Generate supervisord config for each tunnel
-    cat > /etc/supervisor/conf.d/cloudflared-${tunnel_name}.conf <<EOF
-[program:cloudflared-${tunnel_name}]
-command=/usr/local/bin/cloudflared --no-autoupdate tunnel run --token "${tunnel_token}"
-autostart=true
-autorestart=true
-startsecs=5
-startretries=3
-stdout_logfile=/var/log/cloudflared-${tunnel_name}.log
-stderr_logfile=/var/log/cloudflared-${tunnel_name}-err.log
-priority=100
-EOF
-done
-
-# Check if any tunnel configs were created
-if [ -z "$(ls -A /etc/supervisor/conf.d)" ]; then
-    echo "⚠️ No TUNNEL_ environment variables found, no tunnels configured"
-else
-    echo "✅ Generated supervisord configs for cloudflared tunnels"
+# --------------------------------------------
+# Validate required env vars
+# --------------------------------------------
+if [[ -z "${CLOUDFLARED_CERT:-}" || -z "${TUNNEL_TOKEN:-}" || -z "${PUBLIC_KEY:-}" ]]; then
+    echo "ERROR: CLOUDFLARED_CERT, TUNNEL_TOKEN, and PUBLIC_KEY must all be set"
+    exit 1
 fi
 
-# Generate Cloudflared proxy configs
-if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
-    /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
+# --------------------------------------------
+# Write CLOUDFLARED_CERT to /usr/local/etc/cloudflared/cert.pem
+# --------------------------------------------
+mkdir -p "$CLOUDFLARED_CERT_DIR"
+echo "$CLOUDFLARED_CERT" > "$CLOUDFLARED_CERT_PATH"
+chmod 600 "$CLOUDFLARED_CERT_PATH"
+echo "[entrypoint] Wrote CLOUDFLARED_CERT to $CLOUDFLARED_CERT_PATH"
+
+# --------------------------------------------
+# Ensure home & .ssh directories
+# --------------------------------------------
+mkdir -p /home/$SSH_USER/.ssh
+chown $SSH_USER:$SSH_USER /home/$SSH_USER
+chmod 755 /home/$SSH_USER
+
+# --------------------------------------------
+# Handle public key
+# --------------------------------------------
+echo "$PUBLIC_KEY" > /home/$SSH_USER/.ssh/authorized_keys
+chown $SSH_USER:$SSH_USER /home/$SSH_USER/.ssh/authorized_keys
+chmod 600 /home/$SSH_USER/.ssh/authorized_keys
+echo "[run_sshd] Public key written to /home/$SSH_USER/.ssh/authorized_keys"
+
+# --------------------------------------------
+# Generate host keys if missing
+# --------------------------------------------
+ssh-keygen -A
+
+# Test SSH config
+sshd -t -f "$SSHD_CONFIG"
+
+# --------------------------------------------
+# Setup cloudflared programs before Supervisor
+# --------------------------------------------
+if [ -x /usr/local/bin/setup_cloudflared.sh ]; then
+    echo "[entrypoint] Running setup_cloudflared.sh..."
+    /usr/local/bin/setup_cloudflared.sh
 else
-    echo "⚠️ start_cloudflared_proxies.sh not found"
+    echo "[entrypoint] setup_cloudflared.sh not found or not executable"
 fi
 
-echo "🔄 Starting supervisord..."
-# Run supervisord in foreground
-exec /usr/bin/supervisord -n -c /etc/supervisord.conf
+# --------------------------------------------
+# Start Supervisor as the main process
+# --------------------------------------------
+echo "[entrypoint] Starting supervisord..."
+exec /opt/venv/bin/supervisord -n -c /etc/supervisor/supervisord.conf
