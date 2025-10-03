@@ -4,37 +4,28 @@ USER root
 
 # Install dependencies
 RUN set -eux; \
-    # List of Debian packages to install
-    packages="iputils-ping nano curl git gosu wget python3 python3-pip python3-psutil python3-passlib lm-sensors procps nginx apache2-utils"; \
-    \
-    # Update and install packages
+    packages="iputils-ping nano curl git gosu wget python3 python3-pip python3-psutil python3-passlib lm-sensors procps nginx apache2-utils python3-venv"; \
     apt-get update; \
-    for pkg in $packages; do \
-        apt-get install -y --no-install-recommends "$pkg"; \
-    done; \
-    \
-    # Install Python packages for Glances
-    pip3 install --no-cache-dir glances[web] bottle; \
-    \
-    # Clean up apt cache
+    for pkg in $packages; do apt-get install -y --no-install-recommends "$pkg"; done; \
     rm -rf /var/lib/apt/lists/*
 
 
-# Copy wrapper entrypoint
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && /opt/venv/bin/pip install --no-cache-dir glances[web] supervisor
+
+
+# Copy configs and entrypoint
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Glances config (internal, optional)
+COPY supervisord.conf /etc/supervisord.conf
 COPY glances.conf /etc/glances/glances.conf
- 
-
-# Copy Nginx config and password file
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 
 EXPOSE 27017 28017 61208
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-CMD ["mongod"]
+CMD ["/opt/venv/bin/supervisord", "-c", "/etc/supervisord.conf"]

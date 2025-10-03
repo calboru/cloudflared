@@ -1,18 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "[Entrypoint] Starting Glances Web UI..."
-glances -w -p 61209 &
+# Ensure MongoDB root username is supplied
+if [ -z "${MONGO_INITDB_ROOT_USERNAME:-}" ]; then
+    echo "[Entrypoint][ERROR] MONGO_INITDB_ROOT_USERNAME is not set. Exiting." >&2
+    exit 1
+fi
 
-echo "[Entrypoint] Starting Nginx..."
-nginx -g "daemon off;" &
+echo "[Entrypoint] Using MongoDB root username: $MONGO_INITDB_ROOT_USERNAME" >&2
 
-echo "[Entrypoint] Fixing permissions for /data/db ..."
+# Fix permissions for the data directory using the real OS user
+echo "[Entrypoint] Fixing permissions for /data/db ..." >&2
 chown -R mongodb:mongodb /data/db
 
-echo "[Entrypoint] Ensuring /home/mongodb exists ..."
+# Ensure home directory exists
 mkdir -p /home/mongodb
 chown -R mongodb:mongodb /home/mongodb
 
-echo "[Entrypoint] Delegating to official MongoDB entrypoint as mongodb user ..."
-exec gosu mongodb python3 /usr/local/bin/docker-entrypoint.py "$@"
+echo "[Entrypoint] Starting supervisord ..." >&2
+exec "$@"
