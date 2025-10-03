@@ -25,6 +25,14 @@ A lightweight Alpine-based Docker image to run **Cloudflared tunnels**, **SSH ac
 | `TUNNEL_TOKEN`          | Cloudflared tunnel token                                    | ✅       |
 | `PROXY_1, PROXY_2, ...` | Optional Cloudflared proxy commands to run under Supervisor | ⚪       |
 
+## How to create Cloudflared cert
+
+Execute following command and get the cert from its location pass it to CLOUDFLARED_CERT env
+
+```
+cloudflared tunnel login
+```
+
 **Notes:**
 
 - `PROXY_*` commands are expected as **full command strings**, for example:
@@ -80,9 +88,11 @@ docker run -d \
 
 ```
 
-# How to create .htaccess password to reset Glancer access password ?
+### How to create .htaccess password to reset Glancer access password ?
 
 ```
 htpasswd -c /etc/nginx/.htpasswd admin
 
 ```
+
+Replace the value in .htpasswd file
