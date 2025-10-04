@@ -37,7 +37,7 @@ RUN ssh-keygen -A
 # Setup Python virtual environment for Glances
 RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir glances[web] passlib
+    && /opt/venv/bin/pip install --no-cache-dir glances[web] supervisor
 
 ENV PATH="/opt/venv/bin:$PATH"
 
@@ -46,6 +46,7 @@ COPY sshd_config /etc/ssh/sshd_config
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
+COPY supervisord.conf /etc/supervisord.conf
 
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && chmod 644 /etc/nginx/.htpasswd
