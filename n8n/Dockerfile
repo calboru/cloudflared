@@ -1,38 +1,52 @@
+# Base image
 FROM n8nio/n8n:latest
 
 USER root
 
-# Install dependencies: build tools, Python, Nginx, htpasswd
+ENV EXECUTIONS_MODE=queue
+
+# Verify /bin/sh exists
+RUN ls -l /bin/sh || echo "/bin/sh not found"
+
+# Install system dependencies
 RUN apk add --no-cache \
-    su-exec nano iputils curl python3 python3-dev gcc musl-dev linux-headers \
-    nginx apache2-utils bash
+    python3 \
+    py3-pip \
+    gcc \
+    musl-dev \
+    python3-dev \
+    linux-headers \
+    nginx \
+    apache2-utils
 
-# Create virtual environment for Glances
-RUN python3 -m venv /opt/venv
+# Create virtual environment for glances and supervisor
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel \
+ && /opt/venv/bin/pip install --no-cache-dir glances[web] supervisor \
+ && /opt/venv/bin/pip show supervisor \
+ && ls -l /opt/venv/bin/ | grep supervisord || echo "supervisord not found in /opt/venv/bin"
 
-# Activate venv and install Glances + passlib
-RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir glances[web] passlib
-
-# Add venv to PATH
+# Add virtual environment to PATH
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Ensure mounted folder exists
-RUN mkdir -p /home/node/.n8n
-
-# Copy wrapper entrypoint
-COPY docker-entrypoint-wrapper.sh /usr/local/bin/docker-entrypoint-wrapper.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint-wrapper.sh
-
-# Copy Nginx config and htpasswd
+# Copy configs and entrypoint script
+COPY supervisord.conf /etc/supervisord.conf
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY glances.conf /etc/glances/glances.conf
 COPY .htpasswd /etc/nginx/.htpasswd
-RUN chmod 644 /etc/nginx/.htpasswd
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+ && chmod 644 /etc/nginx/.htpasswd
+
+# Create log directories
+RUN mkdir -p /var/log/supervisor /var/log/nginx \
+ && chown -R node:node /var/log/supervisor /var/log/nginx
+
+# Enforce n8n permissions
+ENV N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
 
 # Expose ports
-EXPOSE 5678     
-EXPOSE 61208   
+EXPOSE 61208
 
-WORKDIR /home/node
-
-ENTRYPOINT ["tini", "--", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
+# Use entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]
