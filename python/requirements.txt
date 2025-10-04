@@ -26,6 +26,7 @@ passlib[bcrypt]
 prometheus-client
 sentry-sdk
 
+ 
 # Testing
 pytest
 pytest-asyncio
