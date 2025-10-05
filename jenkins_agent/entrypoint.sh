@@ -24,20 +24,11 @@ echo "$JENKINS_AGENT_SSH_PUBKEY" > /home/jenkins/.ssh/authorized_keys
 chown jenkins:jenkins /home/jenkins/.ssh/authorized_keys
 chmod 600 /home/jenkins/.ssh/authorized_keys
 
-#Start cron for log rotation
-cron
+  
 
-
-# Generate Cloudflared proxy configs
-if [ -f /usr/local/bin/start_cloudflared_proxies.sh ]; then
-    /usr/local/bin/start_cloudflared_proxies.sh || echo "⚠️ Proxy config script exited with nonzero code"
-else
-    echo "⚠️ start_cloudflared_proxies.sh not found"
-fi
-
+ 
 echo "🔄 Starting supervisord..."
 # Run supervisord in foreground
-/usr/bin/supervisord -n -c /etc/supervisord.conf &
+/usr/local/bin/supervisord -n -c /etc/supervisord.conf
 
-# Keep container running
-wait
+ 
