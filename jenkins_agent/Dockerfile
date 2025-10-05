@@ -58,7 +58,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 COPY supervisord.conf /etc/supervisord.conf
 COPY sshd_config /etc/ssh/sshd_config
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 COPY glances.conf /etc/glances/glances.conf

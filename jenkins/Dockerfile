@@ -43,7 +43,7 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages -i https://pyp
 # Now Jenkins runs as UID 0 but username is still 'jenkins'
 USER jenkins
  
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 COPY glances.conf /etc/glances/glances.conf

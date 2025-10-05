@@ -16,6 +16,7 @@ RUN apk add --no-cache \
     musl-dev \
     python3-dev \
     linux-headers \
+    postgresql-client \
     nginx \
     apache2-utils
 

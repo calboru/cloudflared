@@ -85,7 +85,7 @@ RUN mkdir -p /mnt/data /mnt/data/logs && \
 COPY glances.conf /etc/glances/glances.conf
 
 # Copy Nginx config and password file
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 

@@ -76,7 +76,7 @@ RUN mkdir -p /home/developer/.ssh && chown -R developer:developer /home/develope
 
 # Copy configs
 COPY sshd_config /etc/ssh/sshd_config
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 COPY glances.conf /etc/glances/glances.conf

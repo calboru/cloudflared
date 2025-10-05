@@ -56,7 +56,7 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 RUN mkdir -p /mnt/data && chown -R root:root /mnt/data
 
 # Copy configs
-COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
 RUN chmod 644 /etc/nginx/.htpasswd
 COPY glances.conf /etc/glances/glances.conf

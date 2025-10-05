@@ -53,5 +53,16 @@ sed -i "s|^command=n8n.*|command=$N8N_CMD|" /etc/supervisord.conf
 echo "Updated Supervisor config:"
 cat /etc/supervisord.conf
 
+# Wait for Postgres to be ready
+if [ "$DB_TYPE" = "postgres" ]; then
+  echo "Waiting for Postgres at $DB_POSTGRESDB_HOST:$DB_POSTGRESDB_PORT..."
+  while ! pg_isready -h "$DB_POSTGRESDB_HOST" -p "$DB_POSTGRESDB_PORT" -U "$DB_POSTGRESDB_USER" > /dev/null 2>&1; do
+    echo "Postgres not ready yet, retrying in 1s..."
+    sleep 1
+  done
+  echo "Postgres is ready!"
+fi
+
+
 # Start Supervisor
 exec /opt/venv/bin/supervisord -c /etc/supervisord.conf -n
