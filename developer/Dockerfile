@@ -11,19 +11,7 @@ RUN echo '#!/bin/bash' > /usr/local/bin/retry_apt && \
     echo 'while true; do apt-get clean && apt-get update && [ -z "$@" ] || apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "$@" && break || { echo "Retrying apt-get $@ ..."; rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; sleep 1; }; done' >> /usr/local/bin/retry_apt && \
     chmod +x /usr/local/bin/retry_apt
 
-# Update sources & upgrade
-RUN rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
-    if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-        echo "deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse" > /etc/apt/sources.list && \
-        echo "deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-        echo "deb http://archive.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse" >> /etc/apt/sources.list; \
-    else \
-        echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" > /etc/apt/sources.list && \
-        echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-        echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse" >> /etc/apt/sources.list; \
-    fi && \
-    apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
-
+ 
 # Install system packages one at a time
 RUN retry_apt aptitude
 RUN retry_apt ca-certificates
@@ -58,7 +46,7 @@ RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
 COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
 
 # Python packages
-RUN python3 -m pip install --no-cache-dir --break-system-packages -i https://pypi.org/simple glances[web] passlib
+RUN python3 -m pip install --no-cache-dir --break-system-packages glances[web] passlib
 
 # cloudflared
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -89,12 +77,22 @@ FROM base AS node-builder
 USER developer
 WORKDIR /home/developer
 ENV NVM_DIR=/home/developer/.nvm
+ENV NVM_VERSION=v0.40.1
 ENV NODE_VERSION=lts/*
 
+# Option 1: Use specific nvm version (recommended for stability)
 RUN mkdir -p $NVM_DIR && \
-    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.6/install.sh | bash && \
-    bash -c "export NVM_DIR=$NVM_DIR && source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && npm install -g npm pnpm pm2"
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh | bash && \
+    bash -lc "source $NVM_DIR/nvm.sh && \
+    nvm install $NODE_VERSION && \
+    nvm alias default $NODE_VERSION && \
+    nvm use default && \
+    npm install -g npm pnpm pm2 && \
+    node -v && npm -v && pnpm -v && pm2 -v && \
+    echo 'Default Node.js version:' && nvm version default" && \
+    ls -la $NVM_DIR/nvm.sh $NVM_DIR/bash_completion $NVM_DIR/versions/node
 
+ 
 # ----------------------------
 # Stage 3: Final image
 # ----------------------------
@@ -103,9 +101,8 @@ FROM base
 # Copy NVM from builder
 COPY --from=node-builder /home/developer/.nvm /home/developer/.nvm
 
-# Ensure correct permissions for NVM
-RUN chown -R developer:developer /home/developer/.nvm && \
-    chmod -R u+rwX /home/developer/.nvm
+# Ensure correct permissions
+RUN chown -R developer:developer /home/developer/.nvm && chmod -R u+rwX /home/developer/.nvm
 
 # oh-my-zsh + plugins
 RUN export ZSH="/home/developer/.oh-my-zsh" && \
@@ -118,12 +115,23 @@ RUN export ZSH="/home/developer/.oh-my-zsh" && \
     sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/' /home/developer/.zshrc && \
     chown -R developer:developer /home/developer/.oh-my-zsh /home/developer/.zshrc
 
-# Persist NVM environment
-RUN echo '' >> /home/developer/.zshrc && \
-    echo '# NVM setup' >> /home/developer/.zshrc && \
-    echo 'export NVM_DIR="$HOME/.nvm"' >> /home/developer/.zshrc && \
-    echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /home/developer/.zshrc && \
-    echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /home/developer/.zshrc
+# NVM initialization for zsh (developer user only)
+RUN printf '%s\n' \
+      '# NVM initialization' \
+      'export NVM_DIR="/home/developer/.nvm"' \
+      '[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"' \
+      '[ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"' \
+      'alias hash="whence -p" 2>/dev/null' \
+      'autoload -Uz +X bashcompinit && bashcompinit' \
+      '[ -s "$NVM_DIR/nvm.sh" ] && { nvm use default >/dev/null 2>&1 || { nvm install lts/* && nvm alias default lts/* && nvm use lts/*; } }' \
+      > /home/developer/.nvm.zsh && \
+    echo '[ -f /home/developer/.nvm.zsh ] && source /home/developer/.nvm.zsh' >> /home/developer/.zshrc && \
+    echo '[ -f /home/developer/.nvm.zsh ] && source /home/developer/.nvm.zsh' >> /home/developer/.zprofile && \
+    chown -R developer:developer /home/developer/.nvm.zsh /home/developer/.zshrc /home/developer/.zprofile && \
+    # Debug: Verify nvm and node installation
+    ls -la /home/developer/.nvm/nvm.sh /home/developer/.nvm/bash_completion /home/developer/.nvm/versions/node || true && \
+    # Run as developer to verify installation
+    su - developer -c "source /home/developer/.nvm.zsh && nvm -v && node -v && npm -v && pnpm -v && pm2 -v && nvm version default" || true
 
 # Switch to developer
 USER developer
