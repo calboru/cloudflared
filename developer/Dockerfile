@@ -133,9 +133,18 @@ RUN printf '%s\n' \
     # Run as developer to verify installation
     su - developer -c "source /home/developer/.nvm.zsh && nvm -v && node -v && npm -v && pnpm -v && pm2 -v && nvm version default" || true
 
+RUN for d in .cache .npm .config .local .pnpm-store; do \
+      mkdir -p /home/developer/$d && \
+      chown -R developer:developer /home/developer/$d && \
+      chmod -R 700 /home/developer/$d; \
+    done
+
+
 # Switch to developer
 USER developer
 WORKDIR /home/developer
+
+
 
 # Switch back to root
 USER root
