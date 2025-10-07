@@ -12,29 +12,31 @@ RUN echo '#!/bin/bash' > /usr/local/bin/retry_apt && \
 # --------------------------------------------
 # Install base tools individually
 # --------------------------------------------
-RUN retry_apt wget
-RUN retry_apt nano
-RUN retry_apt iputils-ping
-RUN retry_apt curl
-RUN retry_apt ca-certificates
-RUN retry_apt rsync
-RUN retry_apt git
-RUN retry_apt python3
-RUN retry_apt python3-pip
-RUN retry_apt nginx
-RUN retry_apt apache2-utils
-RUN retry_apt nodejs
+RUN retry_apt wget \
+    && retry_apt nano \
+    && retry_apt iputils-ping \
+    && retry_apt curl \
+    && retry_apt ca-certificates \
+    && retry_apt rsync \
+    && retry_apt git \
+    && retry_apt python3 \
+    && retry_apt python3-pip \
+    && retry_apt nginx \
+    && retry_apt apache2-utils \
+    && retry_apt nodejs \
+    && retry_apt bash
 
- 
-
+# --------------------------------------------
+# Ensure Java environment (Temurin JDK is already present)
+# --------------------------------------------
 ENV JAVA_HOME=/opt/java/openjdk
-ENV PATH=$JAVA_HOME/bin:$PATH
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # --------------------------------------------
 # Install Node.js tools
 # --------------------------------------------
-RUN curl -fsSL https://www.npmjs.com/install.sh | sh
-RUN npm install -g pnpm
+RUN curl -fsSL https://www.npmjs.com/install.sh | sh \
+    && npm install -g pnpm
 
 # Verify Node + Java
 RUN node -v && npm -v && pnpm -v && java -version
@@ -42,14 +44,22 @@ RUN node -v && npm -v && pnpm -v && java -version
 # --------------------------------------------
 # Install Python packages
 # --------------------------------------------
-RUN python3 -m pip install --no-cache-dir --break-system-packages -i https://pypi.org/simple glances[web]
-RUN python3 -m pip install --no-cache-dir --break-system-packages supervisor
+RUN python3 -m pip install --no-cache-dir --break-system-packages glances[web] \
+    && python3 -m pip install --no-cache-dir --break-system-packages supervisor
 
 # --------------------------------------------
-# SSH & Nginx setup
+# SSH setup
 # --------------------------------------------
 RUN ssh-keygen -A
 
+ 
+
+
+
+
+# --------------------------------------------
+# Copy configs
+# --------------------------------------------
 COPY sshd_config /etc/ssh/sshd_config
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY .htpasswd /etc/nginx/.htpasswd
@@ -59,7 +69,7 @@ COPY supervisord.conf /etc/supervisord.conf
 COPY glances.conf /etc/glances/glances.conf
 
 # --------------------------------------------
-# Entrypoint and working directory
+# Entrypoint
 # --------------------------------------------
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

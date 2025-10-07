@@ -8,6 +8,13 @@ PermitRootLogin no
 ChallengeResponseAuthentication no
 PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
+PermitUserEnvironment yes
+
+AllowUsers jenkins
+
+# Environment
+
+AcceptEnv JAVA_HOME PATH
 
 # Logging
 
